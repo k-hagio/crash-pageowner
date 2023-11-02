@@ -82,7 +82,7 @@ union handle_parts {
 #define LIST_PAGE_OWNERS_ALL	(0x0002)
 
 /* for env_flags */
-#define PAGE_OWNER_ENABLED	(0x0001)
+#define PAGE_OWNER_INITED	(0x0001)
 #define HANDLE_PARTS_EXTRA	(0x0002)
 
 /* Global variables */
@@ -359,7 +359,7 @@ cmd_owner(void)
 	char *arg;
 	ulong vaddr;
 
-	if (!(env_flags & PAGE_OWNER_ENABLED))
+	if (!(env_flags & PAGE_OWNER_INITED))
 		error(FATAL, "page_owner is disabled\n");
 
 	cmd_flags = 0;
@@ -493,7 +493,7 @@ static struct command_table_entry command_table[] = {
 static void __attribute__((constructor))
 page_owner_init(void)
 {
-	char c = 0, *s;
+	char *s;
 
 	register_extension(command_table);
 
@@ -518,19 +518,16 @@ page_owner_init(void)
 	PO_SIZE_INIT(page_owner, "page_owner");
 	PO_SIZE_INIT(page_ext, "page_ext");
 
-	/* PAGE_OWNER_ENABLED */
-	if (kernel_symbol_exists("page_owner_enabled")) { /* 5.4 and later */
-		try_get_symbol_data("page_owner_enabled", sizeof(char), &c);
-		if (c)
-			env_flags |= PAGE_OWNER_ENABLED;
-	} else if (kernel_symbol_exists("page_owner_disabled")) {
-		try_get_symbol_data("page_owner_disabled", sizeof(char), &c);
-		if (!c)
-			env_flags |= PAGE_OWNER_ENABLED;
+	/* PAGE_OWNER_INITED */
+	if (kernel_symbol_exists("page_owner_inited")) {
+		int inited;	/* lazy hack: probably no offset */
+		try_get_symbol_data("page_owner_inited", sizeof(int), &inited);
+		if (inited)
+			env_flags |= PAGE_OWNER_INITED;
 	} else
-		error(WARNING, "cannot find page_owner_{enabled,disabled}\n");
+		error(WARNING, "cannot find page_owner_inited\n");
 
-	if (!(env_flags & PAGE_OWNER_ENABLED))
+	if (!(env_flags & PAGE_OWNER_INITED))
 		error(WARNING, "page_owner is disabled\n");
 
 	/* page_ext_size */
@@ -585,9 +582,9 @@ page_owner_init(void)
 		pc->flags &= ~DATADEBUG;
 
 		fprintf(fp, "  env_flags: 0x%x ", env_flags);
-		fprintf(fp, " %s", (env_flags & PAGE_OWNER_ENABLED) ? "PAGE_OWNER_ENABLED" : "");
-		fprintf(fp, " %s", (env_flags & HANDLE_PARTS_EXTRA) ? "HANDLE_PARTS_EXTRA" : "");
-		fprintf(fp, "\n");
+		fprintf(fp, "(%sPAGE_OWNER_INITED", (env_flags & PAGE_OWNER_INITED) ? "" : "!");
+		fprintf(fp, "|%sHANDLE_PARTS_EXTRA", (env_flags & HANDLE_PARTS_EXTRA) ? "" : "!");
+		fprintf(fp, ")\n");
 		fprintf(fp, "offsets:\n");
 		fprintf(fp, "  mem_section.page_ext      : %ld\n", PO_OFFSET(mem_section_page_ext));
 		fprintf(fp, "  page_ext.flags            : %ld\n", PO_OFFSET(page_ext_flags));
