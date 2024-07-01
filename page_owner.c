@@ -74,7 +74,12 @@ union handle_parts {
 		uint offset	: 10;
 		uint valid	: 1;
 		uint extra	: 5;
-	} v2;
+	} v2;	/* 6.1 and later */
+	struct {
+		uint pool_index : 17;
+		uint offset	: 10;
+		uint extra	: 5;
+	} v3;	/* 6.8 and later */
 };
 
 /* for cmd_flags */
@@ -83,7 +88,8 @@ union handle_parts {
 
 /* for env_flags */
 #define PAGE_OWNER_INITED	(0x0001)
-#define HANDLE_PARTS_EXTRA	(0x0002)
+#define HANDLE_PARTS_V2		(0x0002)
+#define HANDLE_PARTS_V3		(0x0004)
 
 /* Global variables */
 static int cmd_flags;
@@ -107,7 +113,10 @@ print_stack_depot(uint handle)
 	ulong *stack;
 	int i;
 
-	if (env_flags & HANDLE_PARTS_EXTRA) {
+	if (env_flags & HANDLE_PARTS_V3) {
+		pool_index = parts.v3.pool_index - 1;	/* 3ee34eabac2a and 6.8.2 */
+		offset = parts.v3.offset << DEPOT_STACK_ALIGN;
+	} else if (env_flags & HANDLE_PARTS_V2) {
 		pool_index = parts.v2.pool_index;
 		offset = parts.v2.offset << DEPOT_STACK_ALIGN;
 	} else {
@@ -360,7 +369,8 @@ print_debug_data(void)
 
 	fprintf(fp, "env_flags: 0x%x ", env_flags);
 	fprintf(fp, "(%sPAGE_OWNER_INITED", (env_flags & PAGE_OWNER_INITED) ? "" : "!");
-	fprintf(fp, "|%sHANDLE_PARTS_EXTRA", (env_flags & HANDLE_PARTS_EXTRA) ? "" : "!");
+	fprintf(fp, "|%sHANDLE_PARTS_V2", (env_flags & HANDLE_PARTS_V2) ? "" : "!");
+	fprintf(fp, "|%sHANDLE_PARTS_V3", (env_flags & HANDLE_PARTS_V3) ? "" : "!");
 	fprintf(fp, ")\n");
 	fprintf(fp, "offsets:\n");
 	fprintf(fp, "  mem_section.page_ext       : %ld\n", PO_OFFSET(mem_section_page_ext));
@@ -600,9 +610,11 @@ page_owner_init(void)
 
 	enumerator_value("PAGE_EXT_OWNER_ALLOCATED", &PAGE_EXT_OWNER_ALLOCATED); /* 5.4 and later */
 
-	/* HANDLE_PARTS_EXTRA */
-	if (MEMBER_EXISTS("handle_parts", "extra")) /* 6.1 and later */
-		env_flags |= HANDLE_PARTS_EXTRA;
+	/* HANDLE_PARTS_* */
+	if (!MEMBER_EXISTS("handle_parts", "valid")) /* 6.8 and later */
+		env_flags |= HANDLE_PARTS_V3;
+	else if (MEMBER_EXISTS("handle_parts", "extra")) /* 6.1 and later */
+		env_flags |= HANDLE_PARTS_V2;
 
 	/* stack_pools */
 	if (kernel_symbol_exists("stack_pools")) /* 6.3 and later */
