@@ -117,7 +117,7 @@ EXAMPLES
 Tested Kernels
 --------------
 
-- RHEL8.3 to RHEL9.2 (x86_64)
+- RHEL8.3 to RHEL9.4 (x86_64)
 
 Related Links
 -------------

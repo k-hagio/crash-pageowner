@@ -46,6 +46,8 @@ struct po_offset_table {
 	long page_owner_comm;
 	long page_owner_pid;
 	long page_owner_tgid;
+	long page_owner_free_pid;
+	long page_owner_free_tgid;
 
 	long stack_record_size;
 	long stack_record_entries;
@@ -204,7 +206,7 @@ print_page_owner(ulong page_owner, int show_all, int alloc)
 	if (PO_VALID_MEMBER(page_owner_ts_nsec))
 		bufp += sprintf(bufp, ", ts %llu ns", ULONGLONG(po + PO_OFFSET(page_owner_ts_nsec)));
 
-	if (PO_VALID_MEMBER(page_owner_free_ts_nsec))
+	if (PO_VALID_MEMBER(page_owner_free_ts_nsec) && !PO_VALID_MEMBER(page_owner_free_pid))
 		bufp += sprintf(bufp, ", free_ts %llu ns", ULONGLONG(po + PO_OFFSET(page_owner_free_ts_nsec)));
 
 	fprintf(fp, "%s\n", buf);
@@ -222,6 +224,11 @@ print_page_owner(ulong page_owner, int show_all, int alloc)
 	if (show_all && PO_VALID_MEMBER(page_owner_free_handle)) {
 		free_handle = UINT(po + PO_OFFSET(page_owner_free_handle));
 		if (free_handle) {
+			if (PO_VALID_MEMBER(page_owner_free_pid)) /* should have free_ts_nsec */
+				fprintf(fp, "Page freed via pid %d, tgid %d, free_ts %llu ns\n",
+					INT(po + PO_OFFSET(page_owner_free_pid)),
+					INT(po + PO_OFFSET(page_owner_free_tgid)),
+					ULONGLONG(po + PO_OFFSET(page_owner_free_ts_nsec)));
 			if (alloc)
 				fprintf(fp, "free\n");
 			else
@@ -386,6 +393,8 @@ print_debug_data(void)
 	fprintf(fp, "            .comm            : %ld\n", PO_OFFSET(page_owner_comm));
 	fprintf(fp, "            .pid             : %ld\n", PO_OFFSET(page_owner_pid));
 	fprintf(fp, "            .tgid            : %ld\n", PO_OFFSET(page_owner_tgid));
+	fprintf(fp, "            .free_pid        : %ld\n", PO_OFFSET(page_owner_free_pid));
+	fprintf(fp, "            .free_tgid       : %ld\n", PO_OFFSET(page_owner_free_tgid));
 	fprintf(fp, "  stack_record.size          : %ld\n", PO_OFFSET(stack_record_size));
 	fprintf(fp, "              .entries       : %ld\n", PO_OFFSET(stack_record_entries));
 	fprintf(fp, "sizes:\n");
@@ -564,6 +573,8 @@ page_owner_init(void)
 	PO_OFFSET_INIT(page_owner_comm, s, "comm");			/* 5.18 and later */
 	PO_OFFSET_INIT(page_owner_pid, s, "pid");			/* 5.11 and later */
 	PO_OFFSET_INIT(page_owner_tgid, s, "tgid");			/* 5.18 and later */
+	PO_OFFSET_INIT(page_owner_free_pid, s, "free_pid");		/* 6.8  and later */
+	PO_OFFSET_INIT(page_owner_free_tgid, s, "free_tgid");		/* 6.8  and later */
 	s = "stack_record";
 	PO_OFFSET_INIT(stack_record_size, s, "size");
 	PO_OFFSET_INIT(stack_record_entries, s, "entries");
