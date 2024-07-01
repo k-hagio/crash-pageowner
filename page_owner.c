@@ -1,6 +1,6 @@
 /* page_owner.c - crash extension module for page_owner information
  *
- * Copyright (C) 2023 NEC Corporation
+ * Copyright (C) 2023-2024 NEC Corporation
  *
  * Author: Kazuhito Hagio <k-hagio-ab@nec.com>
  *
@@ -353,6 +353,45 @@ list_page_owner(int show_all)
 }
 
 static void
+print_debug_data(void)
+{
+	ulonglong data_debug = pc->flags & DATADEBUG;
+	pc->flags &= ~DATADEBUG;
+
+	fprintf(fp, "env_flags: 0x%x ", env_flags);
+	fprintf(fp, "(%sPAGE_OWNER_INITED", (env_flags & PAGE_OWNER_INITED) ? "" : "!");
+	fprintf(fp, "|%sHANDLE_PARTS_EXTRA", (env_flags & HANDLE_PARTS_EXTRA) ? "" : "!");
+	fprintf(fp, ")\n");
+	fprintf(fp, "offsets:\n");
+	fprintf(fp, "  mem_section.page_ext       : %ld\n", PO_OFFSET(mem_section_page_ext));
+	fprintf(fp, "  page_ext.flags             : %ld\n", PO_OFFSET(page_ext_flags));
+	fprintf(fp, "  page_ext_operations.offset : %ld\n", PO_OFFSET(page_ext_operations_offset));
+	fprintf(fp, "  page_owner.order           : %ld\n", PO_OFFSET(page_owner_order));
+	fprintf(fp, "        .last_migrate_reason : %ld\n", PO_OFFSET(page_owner_last_migrate_reason));
+	fprintf(fp, "            .gfp_mask        : %ld\n", PO_OFFSET(page_owner_gfp_mask));
+	fprintf(fp, "            .handle          : %ld\n", PO_OFFSET(page_owner_handle));
+	fprintf(fp, "            .free_handle     : %ld\n", PO_OFFSET(page_owner_free_handle));
+	fprintf(fp, "            .ts_nsec         : %ld\n", PO_OFFSET(page_owner_ts_nsec));
+	fprintf(fp, "            .free_ts_nsec    : %ld\n", PO_OFFSET(page_owner_free_ts_nsec));
+	fprintf(fp, "            .comm            : %ld\n", PO_OFFSET(page_owner_comm));
+	fprintf(fp, "            .pid             : %ld\n", PO_OFFSET(page_owner_pid));
+	fprintf(fp, "            .tgid            : %ld\n", PO_OFFSET(page_owner_tgid));
+	fprintf(fp, "  stack_record.size          : %ld\n", PO_OFFSET(stack_record_size));
+	fprintf(fp, "              .entries       : %ld\n", PO_OFFSET(stack_record_entries));
+	fprintf(fp, "sizes:\n");
+	fprintf(fp, "  page_owner                 : %ld\n", PO_SIZE(page_owner));
+	fprintf(fp, "  page_ext                   : %ld\n", PO_SIZE(page_ext));
+	fprintf(fp, "variables:\n");
+	fprintf(fp, "  page_ext_size              : %ld\n", page_ext_size);
+	fprintf(fp, "  page_owner_ops.offset      : %ld\n", page_owner_ops_offset);
+	fprintf(fp, "  PAGE_EXT_OWNER             : %ld\n", PAGE_EXT_OWNER);
+	fprintf(fp, "  PAGE_EXT_OWNER_ALLOCATED   : %ld\n", PAGE_EXT_OWNER_ALLOCATED);
+	fprintf(fp, "  max_pfn                    : %ld (0x%lx)\n", max_pfn, max_pfn);
+
+	pc->flags |= data_debug;
+}
+
+static void
 cmd_owner(void)
 {
 	int c;
@@ -364,14 +403,18 @@ cmd_owner(void)
 
 	cmd_flags = 0;
 
-	while ((c = getopt(argcnt, args, "lL")) != EOF) {
+	while ((c = getopt(argcnt, args, "DlL")) != EOF) {
 		switch(c) {
+		case 'D':
+			print_debug_data();
+			return;
 		case 'L':
 			if (!PO_VALID_MEMBER(page_owner_free_handle)) {
 				error(INFO, "this kernel does not have page owner information for freed pages.\n");
 				return;
 			}
 			cmd_flags |= LIST_PAGE_OWNERS_ALL;
+			/* fall through */
 		case 'l':
 			cmd_flags |= LIST_PAGE_OWNERS;
 			break;
@@ -540,7 +583,7 @@ page_owner_init(void)
 	}
 
 	if (page_ext_size <= 0)
-		error(WARNING, "cannot get page_exit_size value\n");
+		error(WARNING, "cannot get page_ext_size value\n");
 
 	/* page_owner_ops_offset */
 	if (kernel_symbol_exists("page_owner_ops") && PO_VALID_MEMBER(page_ext_operations_offset))
@@ -577,42 +620,8 @@ page_owner_init(void)
 	if (!max_pfn)
 		error(WARNING, "cannot get max_pfn\n");
 
-	if (CRASHDEBUG(1)) {
-		ulonglong data_debug = pc->flags & DATADEBUG;
-		pc->flags &= ~DATADEBUG;
-
-		fprintf(fp, "  env_flags: 0x%x ", env_flags);
-		fprintf(fp, "(%sPAGE_OWNER_INITED", (env_flags & PAGE_OWNER_INITED) ? "" : "!");
-		fprintf(fp, "|%sHANDLE_PARTS_EXTRA", (env_flags & HANDLE_PARTS_EXTRA) ? "" : "!");
-		fprintf(fp, ")\n");
-		fprintf(fp, "offsets:\n");
-		fprintf(fp, "  mem_section.page_ext      : %ld\n", PO_OFFSET(mem_section_page_ext));
-		fprintf(fp, "  page_ext.flags            : %ld\n", PO_OFFSET(page_ext_flags));
-		fprintf(fp, "  page_ext_operations.offset: %ld\n", PO_OFFSET(page_ext_operations_offset));
-		fprintf(fp, "  page_owner.order          : %ld\n", PO_OFFSET(page_owner_order));
-		fprintf(fp, "        .last_migrate_reason: %ld\n", PO_OFFSET(page_owner_last_migrate_reason));
-		fprintf(fp, "            .gfp_mask       : %ld\n", PO_OFFSET(page_owner_gfp_mask));
-		fprintf(fp, "            .handle         : %ld\n", PO_OFFSET(page_owner_handle));
-		fprintf(fp, "            .free_handle    : %ld\n", PO_OFFSET(page_owner_free_handle));
-		fprintf(fp, "            .ts_nsec        : %ld\n", PO_OFFSET(page_owner_ts_nsec));
-		fprintf(fp, "            .free_ts_nsec   : %ld\n", PO_OFFSET(page_owner_free_ts_nsec));
-		fprintf(fp, "            .comm           : %ld\n", PO_OFFSET(page_owner_comm));
-		fprintf(fp, "            .pid            : %ld\n", PO_OFFSET(page_owner_pid));
-		fprintf(fp, "            .tgid           : %ld\n", PO_OFFSET(page_owner_tgid));
-		fprintf(fp, "  stack_record.size         : %ld\n", PO_OFFSET(stack_record_size));
-		fprintf(fp, "              .entries      : %ld\n", PO_OFFSET(stack_record_entries));
-		fprintf(fp, "sizes:\n");
-		fprintf(fp, "  page_owner                : %ld\n", PO_SIZE(page_owner));
-		fprintf(fp, "  page_ext                  : %ld\n", PO_SIZE(page_ext));
-		fprintf(fp, "variables:\n");
-		fprintf(fp, "  page_ext_size             : %ld\n", page_ext_size);
-		fprintf(fp, "  page_owner_ops.offset     : %ld\n", page_owner_ops_offset);
-		fprintf(fp, "  PAGE_EXT_OWNER            : %ld\n", PAGE_EXT_OWNER);
-		fprintf(fp, "  PAGE_EXT_OWNER_ALLOCATED  : %ld\n", PAGE_EXT_OWNER_ALLOCATED);
-		fprintf(fp, "  max_pfn                   : %ld (0x%lx)\n", max_pfn, max_pfn);
-
-		pc->flags |= data_debug;
-	}
+	if (CRASHDEBUG(1))
+		print_debug_data();
 }
 
 static void __attribute__((destructor))
