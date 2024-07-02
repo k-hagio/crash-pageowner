@@ -51,12 +51,12 @@ struct po_offset_table {
 
 	long stack_record_size;
 	long stack_record_entries;
-} po_offset_table = { INVALID_OFFSET };
+} po_offset_table;
 
 static struct po_size_table {
 	long page_owner;
 	long page_ext;
-} po_size_table = { INVALID_OFFSET };
+} po_size_table;
 
 /* from mm/page_ext.c */
 #define PAGE_EXT_INVALID	(0x1)
@@ -405,6 +405,7 @@ print_debug_data(void)
 	fprintf(fp, "  page_owner_ops.offset      : %ld\n", page_owner_ops_offset);
 	fprintf(fp, "  PAGE_EXT_OWNER             : %ld\n", PAGE_EXT_OWNER);
 	fprintf(fp, "  PAGE_EXT_OWNER_ALLOCATED   : %ld\n", PAGE_EXT_OWNER_ALLOCATED);
+	fprintf(fp, "  stack_pools                : 0x%lx\n", stack_pools);
 	fprintf(fp, "  max_pfn                    : %ld (0x%lx)\n", max_pfn, max_pfn);
 
 	pc->flags |= data_debug;
@@ -558,6 +559,9 @@ page_owner_init(void)
 	char *s;
 
 	register_extension(command_table);
+
+	BNEG(&po_offset_table, sizeof(po_offset_table));
+	BNEG(&po_size_table, sizeof(po_size_table));
 
 	PO_OFFSET_INIT(mem_section_page_ext, "mem_section", "page_ext");
 	PO_OFFSET_INIT(page_ext_flags, "page_ext", "flags");
