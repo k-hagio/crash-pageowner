@@ -103,6 +103,7 @@ static long PAGE_EXT_OWNER		= INVALID_VALUE;
 static long PAGE_EXT_OWNER_ALLOCATED	= INVALID_VALUE;
 static ulong stack_pools;
 static ulong max_pfn;
+static ulong min_low_pfn;
 
 static void
 print_stack_depot(uint handle)
@@ -337,7 +338,7 @@ list_page_owner(int show_all)
 
 	po = GETBUF(PO_SIZE(page_owner));
 
-	for (pfn = 0 ; pfn < max_pfn; pfn++) {
+	for (pfn = min_low_pfn; pfn < max_pfn; pfn++) {
 
 		/* Find a valid PFN */
 		while (!section_has_mem_map(valid_section_nr(pfn_to_section_nr(pfn))))
@@ -407,6 +408,7 @@ print_debug_data(void)
 	fprintf(fp, "  PAGE_EXT_OWNER_ALLOCATED   : %ld\n", PAGE_EXT_OWNER_ALLOCATED);
 	fprintf(fp, "  stack_pools                : 0x%lx\n", stack_pools);
 	fprintf(fp, "  max_pfn                    : %ld (0x%lx)\n", max_pfn, max_pfn);
+	fprintf(fp, "  min_low_pfn                : %ld (0x%lx)\n", min_low_pfn, min_low_pfn);
 
 	pc->flags |= data_debug;
 }
@@ -645,7 +647,11 @@ page_owner_init(void)
 		try_get_symbol_data("max_pfn", sizeof(ulong), &max_pfn);
 
 	if (!max_pfn)
-		error(WARNING, "cannot get max_pfn\n");
+		error(WARNING, "cannot get max_pfn, you cannot use -l and -L option.\n");
+
+	/* min_low_pfn */
+	if (kernel_symbol_exists("min_low_pfn"))
+		try_get_symbol_data("min_low_pfn", sizeof(ulong), &min_low_pfn);
 
 	if (CRASHDEBUG(1))
 		print_debug_data();
