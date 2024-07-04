@@ -35,7 +35,7 @@ NAME
   owner - dump page owner information
 
 SYNOPSIS
-  owner address
+  owner [-p] address..
   owner -l|-L
 
 DESCRIPTION
@@ -44,7 +44,8 @@ DESCRIPTION
        -l  list page owner information for allocated pages.
        -L  list page owner information for allocated and freed pages.
            (this option is available only on Linux 5.4, RHEL8.5 and later.)
-  address  a kernel virtual address.
+       -p  address argument is a physical address.
+  address  a kernel virtual address by default, a physical address with -p.
 
 EXAMPLES
   Dump the page owner information of a specified page address:

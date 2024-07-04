@@ -87,6 +87,7 @@ union handle_parts {
 /* for cmd_flags */
 #define LIST_PAGE_OWNERS	(0x0001)
 #define LIST_PAGE_OWNERS_ALL	(0x0002)
+#define PHYS_ADDR		(0x0004)
 
 /* for env_flags */
 #define PAGE_OWNER_INITED	(0x0001)
@@ -296,15 +297,21 @@ pfn_to_page_owner(ulong pfn, int show_all, int *allocated)
 }
 
 static void
-dump_page_owner(ulong vaddr)
+dump_page_owner(ulong addr)
 {
 	physaddr_t paddr;
-	ulong pfn, page, page_owner;
+	ulong vaddr, pfn, page, page_owner;
 	int alloc;
 
-	if (!kvtop(NULL, vaddr, &paddr, 0)) {
-		error(WARNING, "cannot make virtual-to-physical translation: %lx\n", vaddr);
-		return;
+	if (cmd_flags & PHYS_ADDR) {
+		paddr = addr;
+		vaddr = PTOV(paddr);
+	} else {
+		vaddr = addr;
+		if (!kvtop(NULL, vaddr, &paddr, 0)) {
+			error(WARNING, "cannot make virtual-to-physical translation: %lx\n", vaddr);
+			return;
+		}
 	}
 
 	pfn = BTOP(paddr);
@@ -312,7 +319,7 @@ dump_page_owner(ulong vaddr)
 	page_owner = pfn_to_page_owner(pfn, 1, &alloc);
 
 	if (!page_owner) {
-		error(WARNING, "cannot get page_owner for vaddr: %lx\n", vaddr);
+		error(WARNING, "cannot get page_owner for address %lx\n", addr);
 		return;
 	}
 
@@ -418,14 +425,14 @@ cmd_owner(void)
 {
 	int c;
 	char *arg;
-	ulong vaddr;
+	ulong addr;
 
 	if (!(env_flags & PAGE_OWNER_INITED))
 		error(FATAL, "page_owner is disabled\n");
 
 	cmd_flags = 0;
 
-	while ((c = getopt(argcnt, args, "DlL")) != EOF) {
+	while ((c = getopt(argcnt, args, "DlLp")) != EOF) {
 		switch(c) {
 		case 'D':
 			print_debug_data();
@@ -440,6 +447,9 @@ cmd_owner(void)
 		case 'l':
 			cmd_flags |= LIST_PAGE_OWNERS;
 			break;
+		case 'p':
+			cmd_flags |= PHYS_ADDR;
+			break;
 		default:
 			argerrs++;
 			break;
@@ -450,6 +460,9 @@ cmd_owner(void)
 		cmd_usage(pc->curcmd, SYNOPSIS);
 
 	if (cmd_flags & LIST_PAGE_OWNERS) {
+		if (cmd_flags & PHYS_ADDR)
+			cmd_usage(pc->curcmd, SYNOPSIS);
+
 		list_page_owner(cmd_flags & LIST_PAGE_OWNERS_ALL);
 		return;
 	}
@@ -458,14 +471,14 @@ cmd_owner(void)
 		cmd_usage(pc->curcmd, SYNOPSIS);
 
 	while ((arg = args[optind++])) {
-		vaddr = htol(arg, RETURN_ON_ERROR|QUIET, NULL);
+		addr = htol(arg, RETURN_ON_ERROR|QUIET, NULL);
 
-		if (vaddr == BADADDR) {
+		if (addr == BADADDR) {
 			error(INFO, "invalid value: %s\n", arg);
 			continue;
 		}
 
-		dump_page_owner(vaddr);
+		dump_page_owner(addr);
 		fprintf(fp, "\n");
 	}
 }
@@ -473,14 +486,15 @@ cmd_owner(void)
 static char *help_owner[] = {
 "owner",				/* command name */
 "dump page owner information",		/* short description */
-"address\n"
+"[-p] address..\n"
 "  owner -l|-L",			/* argument synopsis, or " " if none */
 "  This command dumps the page owner information of a specified address.",
 "",
 "       -l  list page owner information for allocated pages.",
 "       -L  list page owner information for allocated and freed pages.",
 "           (this option is available only on Linux 5.4, RHEL8.5 and later.)",
-"  address  a kernel virtual address.",
+"       -p  address argument is a physical address.",
+"  address  a kernel virtual address by default, a physical address with -p.",
 "",
 "EXAMPLES",
 "  Dump the page owner information of a specified page address:",
