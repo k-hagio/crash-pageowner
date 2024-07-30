@@ -36,7 +36,7 @@ NAME
 
 SYNOPSIS
   owner [-p] address..
-  owner -l|-L
+  owner -l|-L [count]
 
 DESCRIPTION
   This command dumps the page owner information of a specified address.
@@ -46,6 +46,7 @@ DESCRIPTION
            (this option is available only on Linux 5.4, RHEL8.5 and later.)
        -p  address argument is a physical address.
   address  a kernel virtual address by default, a physical address with -p.
+    count  number of pages to display for -l and -L option.
 
 EXAMPLES
   Dump the page owner information of a specified page address:
@@ -119,6 +120,7 @@ Tested Kernels
 --------------
 
 - RHEL8.3 to RHEL9.4 (x86_64)
+- 4.18 to 6.11 (x86_64)
 
 Related Links
 -------------

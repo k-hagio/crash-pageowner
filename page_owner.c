@@ -105,6 +105,7 @@ static long PAGE_EXT_OWNER_ALLOCATED	= INVALID_VALUE;
 static ulong stack_pools;
 static ulong max_pfn;
 static ulong min_low_pfn;
+static ulong count_to_print;
 
 static void
 print_stack_depot(uint handle)
@@ -337,7 +338,7 @@ dump_page_owner(ulong addr)
 static void
 list_page_owner(int show_all)
 {
-	ulong pfn, page_owner;
+	ulong pfn, page_owner, c = 0;
 	char *po;
 	ushort order;
 	uint handle;
@@ -345,7 +346,7 @@ list_page_owner(int show_all)
 
 	po = GETBUF(PO_SIZE(page_owner));
 
-	for (pfn = min_low_pfn; pfn < max_pfn; pfn++) {
+	for (pfn = min_low_pfn; pfn < max_pfn && c < count_to_print; pfn++) {
 
 		/* Find a valid PFN */
 		while (!section_has_mem_map(valid_section_nr(pfn_to_section_nr(pfn))))
@@ -371,6 +372,7 @@ list_page_owner(int show_all)
 			pfn, pfn, (ulong)PTOB(pfn), page_owner);
 		print_page_owner(page_owner, show_all, alloc);
 		fprintf(fp, "\n");
+		c++;
 	}
 
 	return;
@@ -463,6 +465,11 @@ cmd_owner(void)
 		if (cmd_flags & PHYS_ADDR)
 			cmd_usage(pc->curcmd, SYNOPSIS);
 
+		if (args[optind])
+			count_to_print = stol(args[optind], FAULT_ON_ERROR, NULL);
+		else
+			count_to_print = (ulong)-1; /* kludge */
+
 		list_page_owner(cmd_flags & LIST_PAGE_OWNERS_ALL);
 		return;
 	}
@@ -487,7 +494,7 @@ static char *help_owner[] = {
 "owner",				/* command name */
 "dump page owner information",		/* short description */
 "[-p] address..\n"
-"  owner -l|-L",			/* argument synopsis, or " " if none */
+"  owner -l|-L [count]",		/* argument synopsis, or " " if none */
 "  This command dumps the page owner information of a specified address.",
 "",
 "       -l  list page owner information for allocated pages.",
@@ -495,6 +502,7 @@ static char *help_owner[] = {
 "           (this option is available only on Linux 5.4, RHEL8.5 and later.)",
 "       -p  address argument is a physical address.",
 "  address  a kernel virtual address by default, a physical address with -p.",
+"    count  number of pages to display for -l and -L option.",
 "",
 "EXAMPLES",
 "  Dump the page owner information of a specified page address:",
