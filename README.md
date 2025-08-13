@@ -120,7 +120,7 @@ Tested Kernels
 --------------
 
 - RHEL8.3 to RHEL9.4 (x86_64)
-- 4.18 to 6.11 (x86_64)
+- 4.18 to 6.17 (x86_64)
 
 Related Links
 -------------

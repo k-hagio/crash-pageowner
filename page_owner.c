@@ -1,6 +1,6 @@
 /* page_owner.c - crash extension module for page_owner information
  *
- * Copyright (C) 2023-2024 NEC Corporation
+ * Copyright (C) 2023-2025 NEC Corporation
  *
  * Author: Kazuhito Hagio <k-hagio-ab@nec.com>
  *
@@ -657,7 +657,10 @@ page_owner_init(void)
 
 	/* stack_pools */
 	if (kernel_symbol_exists("stack_pools")) /* 6.3 and later */
-		stack_pools = symbol_value("stack_pools");
+		if (kernel_symbol_exists("stack_max_pools")) /* 6.17: ed4f142f72a91 */
+			try_get_symbol_data("stack_pools", sizeof(ulong), &stack_pools);
+		else
+			stack_pools = symbol_value("stack_pools");
 	else if (kernel_symbol_exists("stack_slabs"))
 		stack_pools = symbol_value("stack_slabs");
 
