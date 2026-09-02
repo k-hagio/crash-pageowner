@@ -119,8 +119,8 @@ EXAMPLES
 Tested Kernels
 --------------
 
-- RHEL8.3 to RHEL9.4 (x86_64)
-- 4.18 to 6.17 (x86_64)
+- RHEL8.3 to RHEL10.2 (x86_64)
+- Linux 4.18 to 7.2 (x86_64)
 
 Related Links
 -------------
@@ -132,5 +132,5 @@ Related Links
 Author
 ------
 
-- Kazuhito Hagio &lt;k-hagio-ab@nec.com&gt;
+- Kazuhito Hagio (@k-hagio)
 
